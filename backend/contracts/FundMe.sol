@@ -8,6 +8,8 @@ pragma solidity ^0.8.8;
 
 import "./PriceConverter.sol";
 
+error FundMe__NotOwner();
+
 // constant, immutable
 
 /* -----------------------------*/
@@ -19,10 +21,17 @@ import "./PriceConverter.sol";
 /* No constant 23,515           */
 /* Constant 21,415              */
 /* -----------------------------*/
+
+/** @title A contract for crowd funding
+ * @author My Name
+ * @notice This contract is to demo a sample funding contract
+ * @dev This implements price feeds as our library
+ */
 contract FundMe {
     using PriceConverter for uint256;
-    uint256 public constant MINIMUM_USD = 50 * 1e18;
 
+    // state variable
+    uint256 public constant MINIMUM_USD = 50 * 1e18;
     address[] public funders;
 
     mapping(address => uint256) public addressToAmountFunded;
@@ -34,11 +43,32 @@ contract FundMe {
 
     AggregatorV3Interface public priceFeed;
 
+    modifier onlyOwner() {
+        if (msg.sender != i_owner) revert FundMe__NotOwner();
+        _;
+    }
+
+    modifier balanceRequired() {
+        require(address(this).balance > 0, "Insuficient balance");
+        _;
+    }
+
     constructor(address priceFeedAddress) {
         i_owner = msg.sender;
         priceFeed = AggregatorV3Interface(priceFeedAddress);
     }
 
+    // receive() external payable {
+    //     fund();
+    // }
+
+    // fallback() external payable {
+    //     fund();
+    // }
+
+    /**  @notice This function funds the contract
+     * @dev This implements price feeds as our library
+     */
     function fund() public payable {
         // Set min fund amount
         // 1. How do we send eth to this contract
@@ -51,6 +81,9 @@ contract FundMe {
         addressToAmountFunded[msg.sender] = msg.value;
     }
 
+    /**  @notice This function withdraw from the contract
+     * @dev This implements price feeds as our library
+     */
     function withdraw() public onlyOwner balanceRequired {
         for (
             uint256 funderIndex = 0;
@@ -72,15 +105,5 @@ contract FundMe {
             value: address(this).balance
         }("");
         require(callSuccess, "Send failed");
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == i_owner, "Sender is not owner!");
-        _;
-    }
-
-    modifier balanceRequired() {
-        require(address(this).balance > 0, "Insuficient balance");
-        _;
     }
 }
